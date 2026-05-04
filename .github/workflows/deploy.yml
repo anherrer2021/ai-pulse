@@ -1,0 +1,38 @@
+name: Deploy to Linode
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Deploy to Linode via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.LINODE_HOST }}
+          username: ${{ secrets.LINODE_USER }}
+          key: ${{ secrets.LINODE_SSH_KEY }}
+          script: |
+            cd /var/www/ai-pulse
+
+            echo "Pulling latest code..."
+            git pull origin main
+
+            echo "Installing backend dependencies..."
+            cd backend
+            npm install --production
+
+            echo "Restarting backend service..."
+            pm2 restart ai-pulse-backend || pm2 start server.js --name ai-pulse-backend
+
+            echo "Copying frontend to Nginx root..."
+            cp -r /var/www/ai-pulse/frontend/* /var/www/html/
+
+            echo "Done. Deployed successfully."
